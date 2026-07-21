@@ -2,7 +2,7 @@
 <html lang="ko">
 <head>
   <meta charset="UTF-8">
-  <title>투박한 게임 메신저</title>
+  <title>에비츄 짤 , 귀여운 에비츄 사진 모음 🐹</title>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
 <body>
@@ -99,23 +99,26 @@
       const box = document.getElementById('chat-box');
       const line = document.createElement('div');
       
-      // 인터넷 주소(http/https) 추출용 정규식
+      // 모든 http/https URL 추출 정규식
       const urlRegex = /(https?:\/\/[^\s]+)/gi;
 
-      // 1. 보안용 특수문자 변환
+      // 1. HTML 이스케이프 (특수문자 보안)
       let safeContent = contentText
         .replace(/&/g, "&amp;")
         .replace(/</g, "&lt;")
         .replace(/>/g, "&gt;");
 
-      // 2. URL 감지 및 처리
+      // 2. URL 파싱
       safeContent = safeContent.replace(urlRegex, (url) => {
-        // 이미지 확장자 또는 네이버/다음 짤방 주소 패턴
-        const isImage = /\.(?:jpg|jpeg|png|gif|webp)(\?.*)?$/i.test(url) || url.includes('mblogthumb');
+        // 이미지 확장자, 네이버, 구글 썸네일(gstatic) 등 이미지 주소 판별
+        const isImage = /\.(?:jpg|jpeg|png|gif|webp)(\?.*)?$/i.test(url) || 
+                        url.includes('mblogthumb') || 
+                        url.includes('gstatic.com') ||
+                        url.includes('googleusercontent.com');
         
         if (isImage) {
-          // referrerpolicy="no-referrer"로 외부 이미지 차단 회피
-          return `<br><img src="${url}" referrerpolicy="no-referrer" style="max-width: 250px; max-height: 250px; border: 1px solid black; margin: 3px 0;" /><br>`;
+          // onerror 처리로 이미지 안 불러와지면 엑박 대신 텍스트로 표시
+          return `<br><img src="${url}" referrerpolicy="no-referrer" onerror="this.outerHTML='[이미지 로드 실패]';" style="max-width: 250px; max-height: 250px; border: 1px solid black; margin: 3px 0;" /><br>`;
         }
         return `<a href="${url}" target="_blank">${url}</a>`;
       });
