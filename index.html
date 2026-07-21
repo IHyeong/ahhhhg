@@ -43,7 +43,7 @@
     <button type="button" onclick="location.reload()">로그아웃</button>
     <br><br>
 
-    <!-- 📌 이미지 출력이 가능한 투박한 채팅 상자 -->
+    <!-- 📌 채팅 기록 상자 -->
     <div id="chat-box" style="width: 550px; height: 350px; border: 2px solid black; overflow-y: scroll; padding: 5px; font-family: monospace; white-space: pre-wrap; word-break: break-all;"></div>
     <br>
 
@@ -94,30 +94,35 @@
       }
     }
 
-    // 채팅창에 텍스트 + 이미지 함께 출력하는 로직
+    // 채팅창 출력 처리
     function appendLogHtml(tagText, senderText, contentText) {
       const box = document.getElementById('chat-box');
       const line = document.createElement('div');
       
-      // 이미지 URL 파싱 (확장자 + 쿼리스트링 지원)
-      const imgRegex = /(https?:\/\/[^\s]+?\.(?:jpg|jpeg|png|gif|webp)(?:\?[^\s]*)?)/gi;
-      
-      // 텍스트 보안 처리 (HTML 이스케이프)
+      // 인터넷 주소(http/https) 추출용 정규식
+      const urlRegex = /(https?:\/\/[^\s]+)/gi;
+
+      // 1. 보안용 특수문자 변환
       let safeContent = contentText
         .replace(/&/g, "&amp;")
         .replace(/</g, "&lt;")
         .replace(/>/g, "&gt;");
 
-      // 이미지 URL이 포함되어 있으면 투박한 <img> 태그로 변환
-      if (imgRegex.test(contentText)) {
-        safeContent = safeContent.replace(imgRegex, (url) => {
-          return `<br><img src="${url}" style="max-width: 250px; max-height: 250px; border: 1px solid black; margin: 3px 0;" /><br>`;
-        });
-      }
+      // 2. URL 감지 및 처리
+      safeContent = safeContent.replace(urlRegex, (url) => {
+        // 이미지 확장자 또는 네이버/다음 짤방 주소 패턴
+        const isImage = /\.(?:jpg|jpeg|png|gif|webp)(\?.*)?$/i.test(url) || url.includes('mblogthumb');
+        
+        if (isImage) {
+          // referrerpolicy="no-referrer"로 외부 이미지 차단 회피
+          return `<br><img src="${url}" referrerpolicy="no-referrer" style="max-width: 250px; max-height: 250px; border: 1px solid black; margin: 3px 0;" /><br>`;
+        }
+        return `<a href="${url}" target="_blank">${url}</a>`;
+      });
 
       line.innerHTML = `<b>${tagText} ${senderText}:</b> ${safeContent}`;
       box.appendChild(line);
-      box.scrollTop = box.scrollHeight; // 자동 스크롤
+      box.scrollTop = box.scrollHeight;
     }
 
     async function loadNotice() {
