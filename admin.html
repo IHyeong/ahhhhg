@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <title>관리자 페이지</title>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+</head>
+<body>
+
+  <h1>🛠️ 계정 관리자 페이지</h1>
+  <hr>
+
+  <fieldset style="width: 300px;">
+    <legend>신규 계정 생성</legend>
+    <p>아이디: <input type="text" id="username"></p>
+    <p>비밀번호: <input type="password" id="password"></p>
+    <button onclick="createUser()">계정 생성</button>
+  </fieldset>
+
+  <br>
+
+  <h3>등록된 유저 목록</h3>
+  <table border="1" cellpadding="5" id="user-table">
+    <thead>
+      <tr>
+        <th>아이디</th>
+        <th>생성일시</th>
+      </tr>
+    </thead>
+    <tbody id="user-list"></tbody>
+  </table>
+
+  <script>
+    // ⚠️ 본인의 Supabase 정보로 변경하세요.
+    const SUPABASE_URL = 'YOUR_SUPABASE_URL';
+    const SUPABASE_KEY = 'YOUR_SUPABASE_ANON_KEY';
+    const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+    async function loadUsers() {
+      const { data, error } = await supabase.from('users').select('username, created_at').order('created_at', { ascending: false });
+      if (error) return alert('유저 목록 로드 실패: ' + error.message);
+
+      const tbody = document.getElementById('user-list');
+      tbody.innerHTML = data.map(u => `
+        <tr>
+          <td>${u.username}</td>
+          <td>${new Date(u.created_at).toLocaleString()}</td>
+        </tr>
+      `).join('');
+    }
+
+    async function createUser() {
+      const username = document.getElementById('username').value.trim();
+      const password = document.getElementById('password').value.trim();
+
+      if (!username || !password) return alert('아이디와 비밀번호를 모두 입력하세요.');
+
+      const { error } = await supabase.from('users').insert([{ username, password }]);
+      
+      if (error) {
+        alert('생성 실패: ' + error.message);
+      } else {
+        alert(`${username} 계정이 생성되었습니다.`);
+        document.getElementById('username').value = '';
+        document.getElementById('password').value = '';
+        loadUsers();
+      }
+    }
+
+    loadUsers();
+  </script>
+</body>
+</html>

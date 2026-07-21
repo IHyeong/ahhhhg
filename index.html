@@ -1,0 +1,207 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <title>투박한 게임 메신저</title>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+</head>
+<body>
+
+  <h1>💬 웹 메신저</h1>
+  <hr>
+
+  <!-- 1. 로그인 폼 -->
+  <fieldset id="login-sec" style="width: 320px;">
+    <legend>접속하기</legend>
+    <p>ID: <input type="text" id="login-id"></p>
+    <p>PW: <input type="password" id="login-pw"></p>
+    <button onclick="login()">로그인</button>
+  </fieldset>
+
+  <!-- 2. 메인 메신저 영역 -->
+  <div id="chat-sec" style="display:none;">
+    
+    <!-- 📌 상단 고정 공지사항 -->
+    <table border="1" width="550" cellpadding="5">
+      <tr>
+        <td bgcolor="#ffeb3b">
+          <b>📌 [공지]</b> <span id="notice-text">공지 불러오는 중...</span>
+        </td>
+      </tr>
+    </table>
+    <br>
+
+    <!-- 접속자 및 채널 선택 -->
+    <b>접속자:</b> <span id="my-name"></span> | 
+    <b>채널:</b> 
+    <select id="channel-select">
+      <option value="global">[전체]</option>
+      <option value="server1">[서버1]</option>
+      <option value="server2">[서버2]</option>
+      <option value="server3">[서버3]</option>
+    </select> | 
+    <button onclick="location.reload()">로그아웃</button>
+    <br><br>
+
+    <!-- 채팅 기록 출력창 (HTML textarea) -->
+    <textarea id="chat-box" rows="20" cols="75" readonly></textarea>
+    
+    <!-- 🖼️ 짤방 표시 영역 -->
+    <div id="img-viewer"></div>
+    <br>
+
+    <!-- 입력창 -->
+    <input type="text" id="msg-input" size="55" placeholder="메시지, /w [닉네임] [할말], 또는 /공지 [할말]" onkeydown="if(event.key==='Enter') sendMsg()">
+    <button onclick="sendMsg()">전송</button>
+
+  </div>
+
+  <script>
+    // ⚠️ 본인의 Supabase 정보로 변경하세요.
+    const SUPABASE_URL = 'YOUR_SUPABASE_URL';
+    const SUPABASE_KEY = 'YOUR_SUPABASE_ANON_KEY';
+    const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+    let myName = "";
+    let lastWhisperTarget = null;
+
+    // 로그인 처리
+    async function login() {
+      const id = document.getElementById('login-id').value.trim();
+      const pw = document.getElementById('login-pw').value.trim();
+
+      if (!id || !pw) return alert('아이디와 비밀번호를 입력하세요.');
+
+      const { data, error } = await supabase
+        .from('users')
+        .select('*')
+        .eq('username', id)
+        .eq('password', pw)
+        .single();
+
+      if (data) {
+        myName = data.username;
+        document.getElementById('login-sec').style.display = 'none';
+        document.getElementById('chat-sec').style.display = 'block';
+        document.getElementById('my-name').innerText = myName;
+
+        loadNotice();
+        loadMessages();
+        subscribeRealtime();
+      } else {
+        alert('로그인 실패: 아이디 또는 비밀번호가 틀렸습니다.');
+      }
+    }
+
+    // 텍스트 보관함 업데이트
+    function appendLog(text) {
+      const box = document.getElementById('chat-box');
+      box.value += text + "\n";
+      box.scrollTop = box.scrollHeight;
+    }
+
+    // 🖼️ 짤방 감지 및 표시
+    function checkAndShowImage(text) {
+      const imgRegex = /(https?:\/\/[^\s]+?\.(?:jpg|jpeg|png|gif|webp))/gi;
+      const match = text.match(imgRegex);
+      if (match) {
+        const viewer = document.getElementById('img-viewer');
+        viewer.innerHTML = `<p><b>[최근 짤방]</b><br><img src="${match[0]}" width="220" border="1"></p>`;
+      }
+    }
+
+    // 공지사항 불러오기
+    async function loadNotice() {
+      const { data } = await supabase.from('notices').select('content').eq('id', 1).single();
+      if (data) document.getElementById('notice-text').innerText = data.content;
+    }
+
+    // 기존 메시지 불러오기 (초기 50개)
+    async function loadMessages() {
+      const { data } = await supabase.from('messages').select('*').order('id', { ascending: true }).limit(50);
+      if (data) data.forEach(parseAndDisplayMsg);
+    }
+
+    // 메시지 조건 필터링 및 출력
+    function parseAndDisplayMsg(msg) {
+      // 귓속말은 자신이나 수신 대상일 때만 출력
+      if (msg.channel === 'whisper') {
+        if (msg.sender !== myName && msg.receiver !== myName) return;
+        const tag = msg.sender === myName ? `[To ${msg.receiver}]` : `[From ${msg.sender}]`;
+        appendLog(`${tag} ${msg.sender}: ${msg.content}`);
+        checkAndShowImage(msg.content);
+        return;
+      }
+
+      // 일반/서버 채널 메시지
+      const channelTag = msg.channel === 'global' ? '[전체]' : `[${msg.channel.toUpperCase()}]`;
+      appendLog(`${channelTag} ${msg.sender}: ${msg.content}`);
+      checkAndShowImage(msg.content);
+    }
+
+    // 메시지 전송 로직
+    async function sendMsg() {
+      const input = document.getElementById('msg-input');
+      const text = input.value.trim();
+      const currentChannel = document.getElementById('channel-select').value;
+
+      if (!text) return;
+
+      // 1. /공지 커맨드 처리
+      const noticeMatch = text.match(/^\/공지\s+(.+)/);
+      if (noticeMatch) {
+        const newNotice = noticeMatch[1];
+        await supabase.from('notices').update({ content: newNotice }).eq('id', 1);
+        input.value = '';
+        return;
+      }
+
+      // 2. /w 또는 /귓 커맨드 처리 (귓속말)
+      const whisperMatch = text.match(/^\/(?:w|귓)\s+([^\s]+)\s+(.+)/);
+      if (whisperMatch) {
+        const target = whisperMatch[1];
+        const content = whisperMatch[2];
+
+        await supabase.from('messages').insert([{
+          sender: myName,
+          channel: 'whisper',
+          receiver: target,
+          content: content
+        }]);
+
+        lastWhisperTarget = target;
+        input.value = `/w ${lastWhisperTarget} `; // 귓속말 입력 유지
+        return;
+      }
+
+      // 3. 일반 메시지 전송
+      await supabase.from('messages').insert([{
+        sender: myName,
+        channel: currentChannel,
+        content: text
+      }]);
+
+      lastWhisperTarget = null;
+      input.value = '';
+    }
+
+    // Realtime 구독 설정
+    function subscribeRealtime() {
+      // 메시지 수신
+      supabase.channel('public:messages')
+        .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'messages' }, payload => {
+          parseAndDisplayMsg(payload.new);
+        })
+        .subscribe();
+
+      // 공지 변경 수신
+      supabase.channel('public:notices')
+        .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'notices' }, payload => {
+          document.getElementById('notice-text').innerText = payload.new.content;
+          appendLog(`[SYSTEM] 공지가 변경되었습니다.`);
+        })
+        .subscribe();
+    }
+  </script>
+</body>
+</html>
