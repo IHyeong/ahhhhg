@@ -15,7 +15,7 @@
     <legend>접속하기</legend>
     <p>ID: <input type="text" id="login-id"></p>
     <p>PW: <input type="password" id="login-pw"></p>
-    <button onclick="login()">로그인</button>
+    <button type="button" onclick="login()">로그인</button>
   </fieldset>
 
   <!-- 2. 메인 메신저 영역 -->
@@ -40,7 +40,7 @@
       <option value="server2">[서버2]</option>
       <option value="server3">[서버3]</option>
     </select> | 
-    <button onclick="location.reload()">로그아웃</button>
+    <button type="button" onclick="location.reload()">로그아웃</button>
     <br><br>
 
     <!-- 채팅 기록 출력창 (HTML textarea) -->
@@ -52,15 +52,17 @@
 
     <!-- 입력창 -->
     <input type="text" id="msg-input" size="55" placeholder="메시지, /w [닉네임] [할말], 또는 /공지 [할말]" onkeydown="if(event.key==='Enter') sendMsg()">
-    <button onclick="sendMsg()">전송</button>
+    <button type="button" onclick="sendMsg()">전송</button>
 
   </div>
 
   <script>
-    // ⚠️ 본인의 Supabase 정보로 변경하세요.
+    // Supabase 접속 정보 설정
     const SUPABASE_URL = 'https://jxqtwzdevpgnhljgsnfz.supabase.co';
     const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imp4cXR3emRldnBnbmhsamdzbmZ6Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODQ1NjM5MDgsImV4cCI6MjEwMDEzOTkwOH0.JwD2eSEJI5az08nOGxcUXGtrKpvHIuau0Z5ntzDGi1Q';
-    const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+    // 충돌 방지를 위해 supabaseClient 사용
+    const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
     let myName = "";
     let lastWhisperTarget = null;
@@ -70,14 +72,20 @@
       const id = document.getElementById('login-id').value.trim();
       const pw = document.getElementById('login-pw').value.trim();
 
-      if (!id || !pw) return alert('아이디와 비밀번호를 입력하세요.');
+      if (!id || !pw) return alert('아이디와 비밀번호를 모두 입력하세요.');
 
-      const { data, error } = await supabase
+      const { data, error } = await supabaseClient
         .from('users')
         .select('*')
         .eq('username', id)
         .eq('password', pw)
-        .single();
+        .maybeSingle();
+
+      if (error) {
+        alert('로그인 처리 중 에러 발생: ' + error.message);
+        console.error(error);
+        return;
+      }
 
       if (data) {
         myName = data.username;
@@ -112,13 +120,13 @@
 
     // 공지사항 불러오기
     async function loadNotice() {
-      const { data } = await supabase.from('notices').select('content').eq('id', 1).single();
+      const { data } = await supabaseClient.from('notices').select('content').eq('id', 1).maybeSingle();
       if (data) document.getElementById('notice-text').innerText = data.content;
     }
 
     // 기존 메시지 불러오기 (초기 50개)
     async function loadMessages() {
-      const { data } = await supabase.from('messages').select('*').order('id', { ascending: true }).limit(50);
+      const { data } = await supabaseClient.from('messages').select('*').order('id', { ascending: true }).limit(50);
       if (data) data.forEach(parseAndDisplayMsg);
     }
 
@@ -151,7 +159,7 @@
       const noticeMatch = text.match(/^\/공지\s+(.+)/);
       if (noticeMatch) {
         const newNotice = noticeMatch[1];
-        await supabase.from('notices').update({ content: newNotice }).eq('id', 1);
+        await supabaseClient.from('notices').update({ content: newNotice }).eq('id', 1);
         input.value = '';
         return;
       }
@@ -162,7 +170,7 @@
         const target = whisperMatch[1];
         const content = whisperMatch[2];
 
-        await supabase.from('messages').insert([{
+        await supabaseClient.from('messages').insert([{
           sender: myName,
           channel: 'whisper',
           receiver: target,
@@ -175,7 +183,7 @@
       }
 
       // 3. 일반 메시지 전송
-      await supabase.from('messages').insert([{
+      await supabaseClient.from('messages').insert([{
         sender: myName,
         channel: currentChannel,
         content: text
@@ -188,14 +196,14 @@
     // Realtime 구독 설정
     function subscribeRealtime() {
       // 메시지 수신
-      supabase.channel('public:messages')
+      supabaseClient.channel('public:messages')
         .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'messages' }, payload => {
           parseAndDisplayMsg(payload.new);
         })
         .subscribe();
 
       // 공지 변경 수신
-      supabase.channel('public:notices')
+      supabaseClient.channel('public:notices')
         .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'notices' }, payload => {
           document.getElementById('notice-text').innerText = payload.new.content;
           appendLog(`[SYSTEM] 공지가 변경되었습니다.`);
