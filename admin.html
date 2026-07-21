@@ -14,7 +14,7 @@
     <legend>신규 계정 생성</legend>
     <p>아이디: <input type="text" id="username"></p>
     <p>비밀번호: <input type="password" id="password"></p>
-    <button onclick="createUser()">계정 생성</button>
+    <button type="button" onclick="createUser()">계정 생성</button>
   </fieldset>
 
   <br>
@@ -31,16 +31,19 @@
   </table>
 
   <script>
-    // ⚠️ 본인의 Supabase 정보로 변경하세요 (딱 한 번만 선언)
+    // 입력받은 Supabase 접속 정보
     const SUPABASE_URL = 'https://jxqtwzdevpgnhljgsnfz.supabase.co';
     const SUPABASE_KEY = 'M5MDgsImV4cCI6MjEwMDEzOTkwOH0.JwD2eSEJI5az08nOGxcUXGtrKpvHIuau0Z5ntzDGi1Q';
     
-    // window.supabase 객체 생성
+    // 변수명 충돌 방지를 위해 supabaseClient 사용
     const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
     // 유저 목록 불러오기
     async function loadUsers() {
-      const { data, error } = await supabaseClient.from('users').select('username, created_at').order('created_at', { ascending: false });
+      const { data, error } = await supabaseClient
+        .from('users')
+        .select('username, created_at')
+        .order('created_at', { ascending: false });
       
       if (error) {
         console.error('목록 로드 에러:', error);
@@ -71,7 +74,9 @@
         return;
       }
 
-      const { error } = await supabaseClient.from('users').insert([{ username, password }]);
+      const { error } = await supabaseClient
+        .from('users')
+        .insert([{ username, password }]);
       
       if (error) {
         alert('생성 실패: ' + error.message);
@@ -84,7 +89,7 @@
       }
     }
 
-    // 페이지 열리면 목록 불러오기
+    // 페이지 접속 시 목록 불러오기 실행
     loadUsers();
   </script>
 </body>
