@@ -43,11 +43,8 @@
     <button type="button" onclick="location.reload()">로그아웃</button>
     <br><br>
 
-    <!-- 채팅 기록 출력창 (HTML textarea) -->
-    <textarea id="chat-box" rows="20" cols="75" readonly></textarea>
-    
-    <!-- 🖼️ 짤방 표시 영역 -->
-    <div id="img-viewer"></div>
+    <!-- 📌 이미지 출력이 가능한 투박한 채팅 상자 -->
+    <div id="chat-box" style="width: 550px; height: 350px; border: 2px solid black; overflow-y: scroll; padding: 5px; font-family: monospace; white-space: pre-wrap; word-break: break-all;"></div>
     <br>
 
     <!-- 입력창 -->
@@ -57,22 +54,19 @@
   </div>
 
   <script>
-    // Supabase 접속 정보 설정
     const SUPABASE_URL = 'https://jxqtwzdevpgnhljgsnfz.supabase.co';
     const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imp4cXR3emRldnBnbmhsamdzbmZ6Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODQ1NjM5MDgsImV4cCI6MjEwMDEzOTkwOH0.JwD2eSEJI5az08nOGxcUXGtrKpvHIuau0Z5ntzDGi1Q';
 
-    // 충돌 방지를 위해 supabaseClient 사용
     const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
     let myName = "";
     let lastWhisperTarget = null;
 
-    // 로그인 처리
     async function login() {
       const id = document.getElementById('login-id').value.trim();
       const pw = document.getElementById('login-pw').value.trim();
 
-      if (!id || !pw) return alert('아이디와 비밀번호를 모두 입력하세요.');
+      if (!id || !pw) return alert('아이디와 비밀번호를 입력하세요.');
 
       const { data, error } = await supabaseClient
         .from('users')
@@ -83,7 +77,6 @@
 
       if (error) {
         alert('로그인 처리 중 에러 발생: ' + error.message);
-        console.error(error);
         return;
       }
 
@@ -101,53 +94,54 @@
       }
     }
 
-    // 텍스트 보관함 업데이트
-    function appendLog(text) {
+    // 채팅창에 텍스트 + 이미지 함께 출력하는 로직
+    function appendLogHtml(tagText, senderText, contentText) {
       const box = document.getElementById('chat-box');
-      box.value += text + "\n";
-      box.scrollTop = box.scrollHeight;
-    }
+      const line = document.createElement('div');
+      
+      // 이미지 URL 파싱 (확장자 + 쿼리스트링 지원)
+      const imgRegex = /(https?:\/\/[^\s]+?\.(?:jpg|jpeg|png|gif|webp)(?:\?[^\s]*)?)/gi;
+      
+      // 텍스트 보안 처리 (HTML 이스케이프)
+      let safeContent = contentText
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;");
 
-    // 🖼️ 짤방 감지 및 표시
-    function checkAndShowImage(text) {
-      const imgRegex = /(https?:\/\/[^\s]+?\.(?:jpg|jpeg|png|gif|webp))/gi;
-      const match = text.match(imgRegex);
-      if (match) {
-        const viewer = document.getElementById('img-viewer');
-        viewer.innerHTML = `<p><b>[최근 짤방]</b><br><img src="${match[0]}" width="220" border="1"></p>`;
+      // 이미지 URL이 포함되어 있으면 투박한 <img> 태그로 변환
+      if (imgRegex.test(contentText)) {
+        safeContent = safeContent.replace(imgRegex, (url) => {
+          return `<br><img src="${url}" style="max-width: 250px; max-height: 250px; border: 1px solid black; margin: 3px 0;" /><br>`;
+        });
       }
+
+      line.innerHTML = `<b>${tagText} ${senderText}:</b> ${safeContent}`;
+      box.appendChild(line);
+      box.scrollTop = box.scrollHeight; // 자동 스크롤
     }
 
-    // 공지사항 불러오기
     async function loadNotice() {
       const { data } = await supabaseClient.from('notices').select('content').eq('id', 1).maybeSingle();
       if (data) document.getElementById('notice-text').innerText = data.content;
     }
 
-    // 기존 메시지 불러오기 (초기 50개)
     async function loadMessages() {
       const { data } = await supabaseClient.from('messages').select('*').order('id', { ascending: true }).limit(50);
       if (data) data.forEach(parseAndDisplayMsg);
     }
 
-    // 메시지 조건 필터링 및 출력
     function parseAndDisplayMsg(msg) {
-      // 귓속말은 자신이나 수신 대상일 때만 출력
       if (msg.channel === 'whisper') {
         if (msg.sender !== myName && msg.receiver !== myName) return;
         const tag = msg.sender === myName ? `[To ${msg.receiver}]` : `[From ${msg.sender}]`;
-        appendLog(`${tag} ${msg.sender}: ${msg.content}`);
-        checkAndShowImage(msg.content);
+        appendLogHtml(tag, msg.sender, msg.content);
         return;
       }
 
-      // 일반/서버 채널 메시지
       const channelTag = msg.channel === 'global' ? '[전체]' : `[${msg.channel.toUpperCase()}]`;
-      appendLog(`${channelTag} ${msg.sender}: ${msg.content}`);
-      checkAndShowImage(msg.content);
+      appendLogHtml(channelTag, msg.sender, msg.content);
     }
 
-    // 메시지 전송 로직
     async function sendMsg() {
       const input = document.getElementById('msg-input');
       const text = input.value.trim();
@@ -155,7 +149,6 @@
 
       if (!text) return;
 
-      // 1. /공지 커맨드 처리
       const noticeMatch = text.match(/^\/공지\s+(.+)/);
       if (noticeMatch) {
         const newNotice = noticeMatch[1];
@@ -164,7 +157,6 @@
         return;
       }
 
-      // 2. /w 또는 /귓 커맨드 처리 (귓속말)
       const whisperMatch = text.match(/^\/(?:w|귓)\s+([^\s]+)\s+(.+)/);
       if (whisperMatch) {
         const target = whisperMatch[1];
@@ -178,11 +170,10 @@
         }]);
 
         lastWhisperTarget = target;
-        input.value = `/w ${lastWhisperTarget} `; // 귓속말 입력 유지
+        input.value = `/w ${lastWhisperTarget} `;
         return;
       }
 
-      // 3. 일반 메시지 전송
       await supabaseClient.from('messages').insert([{
         sender: myName,
         channel: currentChannel,
@@ -193,20 +184,22 @@
       input.value = '';
     }
 
-    // Realtime 구독 설정
     function subscribeRealtime() {
-      // 메시지 수신
       supabaseClient.channel('public:messages')
         .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'messages' }, payload => {
           parseAndDisplayMsg(payload.new);
         })
         .subscribe();
 
-      // 공지 변경 수신
       supabaseClient.channel('public:notices')
         .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'notices' }, payload => {
           document.getElementById('notice-text').innerText = payload.new.content;
-          appendLog(`[SYSTEM] 공지가 변경되었습니다.`);
+          
+          const box = document.getElementById('chat-box');
+          const noticeLine = document.createElement('div');
+          noticeLine.innerHTML = `<b>[SYSTEM]:</b> 공지가 변경되었습니다.`;
+          box.appendChild(noticeLine);
+          box.scrollTop = box.scrollHeight;
         })
         .subscribe();
     }
