@@ -14,7 +14,7 @@
   <hr>
 
   <!-- 1. 로그인 폼 -->
-  <fieldset id="login-sec" class="login-panel" style="width: 320px;">
+  <fieldset id="login-sec" class="login-panel">
     <legend>접속하기</legend>
     <p>ID: <input type="text" id="login-id"></p>
     <p>PW: <input type="password" id="login-pw"></p>
@@ -25,7 +25,7 @@
   <div id="chat-sec" style="display:none;">
     
     <!-- 상단 고정 공지사항 -->
-    <table class="notice-table">
+    <table border="1" width="550" cellpadding="5">
       <tr>
         <td bgcolor="#ffeb3b">
           <b>[공지]</b> <span id="notice-text">공지 불러오는 중...</span>
@@ -35,27 +35,24 @@
     <br>
 
     <!-- 접속자 및 채널 선택 -->
-    <div class="toolbar">
-      <span><b>접속자:</b> <span id="my-name"></span></span>
-      <span><b>채널:</b></span>
-      <select id="channel-select">
-        <option value="global">[전체]</option>
-        <option value="server1">[서버1]</option>
-        <option value="server2">[서버2]</option>
-        <option value="server3">[서버3]</option>
-      </select>
-      <button type="button" onclick="location.reload()">로그아웃</button>
-    </div>
+    <b>접속자:</b> <span id="my-name"></span> | 
+    <b>채널:</b> 
+    <select id="channel-select">
+      <option value="global">[전체]</option>
+      <option value="server1">[서버1]</option>
+      <option value="server2">[서버2]</option>
+      <option value="server3">[서버3]</option>
+    </select> | 
+    <button type="button" onclick="location.reload()">로그아웃</button>
+    <br><br>
 
     <!-- 채팅 기록 상자 -->
     <div id="chat-box" class="chat-box"></div>
     <br>
 
     <!-- 입력창 -->
-    <div class="input-row">
-      <input type="text" id="msg-input" class="msg-input" placeholder="메시지, /w [닉네임] [할말], 또는 /공지 [할말]" onkeydown="if(event.key==='Enter') sendMsg()">
-      <button type="button" onclick="sendMsg()">전송</button>
-    </div>
+    <input type="text" id="msg-input" class="msg-input" size="55" placeholder="메시지, /w [닉네임] [할말], 또는 /공지 [할말]" onkeydown="if(event.key==='Enter') sendMsg()">
+    <button type="button" onclick="sendMsg()">전송</button>
 
   </div>
 
