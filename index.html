@@ -2,8 +2,10 @@
 <html lang="ko">
 <head>
   <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>에비츄 짤 , 귀여운 에비츄 사진 모음 🐹</title>
   <link rel="shortcut icon" href="favicon.png" type="image/png">
+  <link rel="stylesheet" href="styles.css">
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
 <body>
@@ -12,7 +14,7 @@
   <hr>
 
   <!-- 1. 로그인 폼 -->
-  <fieldset id="login-sec" style="width: 320px;">
+  <fieldset id="login-sec" class="login-panel" style="width: 320px;">
     <legend>접속하기</legend>
     <p>ID: <input type="text" id="login-id"></p>
     <p>PW: <input type="password" id="login-pw"></p>
@@ -23,7 +25,7 @@
   <div id="chat-sec" style="display:none;">
     
     <!-- 상단 고정 공지사항 -->
-    <table border="1" width="550" cellpadding="5">
+    <table class="notice-table">
       <tr>
         <td bgcolor="#ffeb3b">
           <b>[공지]</b> <span id="notice-text">공지 불러오는 중...</span>
@@ -33,24 +35,27 @@
     <br>
 
     <!-- 접속자 및 채널 선택 -->
-    <b>접속자:</b> <span id="my-name"></span> | 
-    <b>채널:</b> 
-    <select id="channel-select">
-      <option value="global">[전체]</option>
-      <option value="server1">[서버1]</option>
-      <option value="server2">[서버2]</option>
-      <option value="server3">[서버3]</option>
-    </select> | 
-    <button type="button" onclick="location.reload()">로그아웃</button>
-    <br><br>
+    <div class="toolbar">
+      <span><b>접속자:</b> <span id="my-name"></span></span>
+      <span><b>채널:</b></span>
+      <select id="channel-select">
+        <option value="global">[전체]</option>
+        <option value="server1">[서버1]</option>
+        <option value="server2">[서버2]</option>
+        <option value="server3">[서버3]</option>
+      </select>
+      <button type="button" onclick="location.reload()">로그아웃</button>
+    </div>
 
     <!-- 채팅 기록 상자 -->
-    <div id="chat-box" style="width: 550px; height: 350px; border: 2px solid black; overflow-y: scroll; padding: 5px; font-family: monospace; white-space: pre-wrap; word-break: break-all;"></div>
+    <div id="chat-box" class="chat-box"></div>
     <br>
 
     <!-- 입력창 -->
-    <input type="text" id="msg-input" size="55" placeholder="메시지, /w [닉네임] [할말], 또는 /공지 [할말]" onkeydown="if(event.key==='Enter') sendMsg()">
-    <button type="button" onclick="sendMsg()">전송</button>
+    <div class="input-row">
+      <input type="text" id="msg-input" class="msg-input" placeholder="메시지, /w [닉네임] [할말], 또는 /공지 [할말]" onkeydown="if(event.key==='Enter') sendMsg()">
+      <button type="button" onclick="sendMsg()">전송</button>
+    </div>
 
   </div>
 
