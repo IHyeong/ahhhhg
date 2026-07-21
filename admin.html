@@ -20,7 +20,7 @@
   <br>
 
   <h3>등록된 유저 목록</h3>
-  <table border="1" cellpadding="5" id="user-table">
+  <table border="1" cellpadding="5">
     <thead>
       <tr>
         <th>아이디</th>
@@ -31,42 +31,60 @@
   </table>
 
   <script>
-    // ⚠️ 본인의 Supabase 정보로 변경하세요.
+    // ⚠️ 본인의 Supabase 정보로 변경하세요 (딱 한 번만 선언)
     const SUPABASE_URL = 'YOUR_SUPABASE_URL';
     const SUPABASE_KEY = 'YOUR_SUPABASE_ANON_KEY';
-    const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+    
+    // window.supabase 객체 생성
+    const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
+    // 유저 목록 불러오기
     async function loadUsers() {
-      const { data, error } = await supabase.from('users').select('username, created_at').order('created_at', { ascending: false });
-      if (error) return alert('유저 목록 로드 실패: ' + error.message);
+      const { data, error } = await supabaseClient.from('users').select('username, created_at').order('created_at', { ascending: false });
+      
+      if (error) {
+        console.error('목록 로드 에러:', error);
+        return;
+      }
 
       const tbody = document.getElementById('user-list');
-      tbody.innerHTML = data.map(u => `
-        <tr>
-          <td>${u.username}</td>
-          <td>${new Date(u.created_at).toLocaleString()}</td>
-        </tr>
-      `).join('');
+      if (data) {
+        tbody.innerHTML = data.map(u => `
+          <tr>
+            <td>${u.username}</td>
+            <td>${new Date(u.created_at).toLocaleString()}</td>
+          </tr>
+        `).join('');
+      }
     }
 
+    // 유저 생성하기
     async function createUser() {
-      const username = document.getElementById('username').value.trim();
-      const password = document.getElementById('password').value.trim();
+      const usernameInput = document.getElementById('username');
+      const passwordInput = document.getElementById('password');
 
-      if (!username || !password) return alert('아이디와 비밀번호를 모두 입력하세요.');
+      const username = usernameInput.value.trim();
+      const password = passwordInput.value.trim();
 
-      const { error } = await supabase.from('users').insert([{ username, password }]);
+      if (!username || !password) {
+        alert('아이디와 비밀번호를 모두 입력하세요.');
+        return;
+      }
+
+      const { error } = await supabaseClient.from('users').insert([{ username, password }]);
       
       if (error) {
         alert('생성 실패: ' + error.message);
+        console.error(error);
       } else {
-        alert(`${username} 계정이 생성되었습니다.`);
-        document.getElementById('username').value = '';
-        document.getElementById('password').value = '';
+        alert(`${username} 계정이 생성되었습니다!`);
+        usernameInput.value = '';
+        passwordInput.value = '';
         loadUsers();
       }
     }
 
+    // 페이지 열리면 목록 불러오기
     loadUsers();
   </script>
 </body>
