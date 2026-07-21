@@ -7,7 +7,7 @@
 </head>
 <body>
 
-  <h1>💬 웹 메신저</h1>
+  <h1>에비츄 짤 , 귀여운 에비츄 사진 모음 🐹</h1>
   <hr>
 
   <!-- 1. 로그인 폼 -->
@@ -21,11 +21,11 @@
   <!-- 2. 메인 메신저 영역 -->
   <div id="chat-sec" style="display:none;">
     
-    <!-- 📌 상단 고정 공지사항 -->
+    <!-- 상단 고정 공지사항 -->
     <table border="1" width="550" cellpadding="5">
       <tr>
         <td bgcolor="#ffeb3b">
-          <b>📌 [공지]</b> <span id="notice-text">공지 불러오는 중...</span>
+          <b>[공지]</b> <span id="notice-text">공지 불러오는 중...</span>
         </td>
       </tr>
     </table>
@@ -43,7 +43,7 @@
     <button type="button" onclick="location.reload()">로그아웃</button>
     <br><br>
 
-    <!-- 📌 채팅 기록 상자 -->
+    <!-- 채팅 기록 상자 -->
     <div id="chat-box" style="width: 550px; height: 350px; border: 2px solid black; overflow-y: scroll; padding: 5px; font-family: monospace; white-space: pre-wrap; word-break: break-all;"></div>
     <br>
 
@@ -99,25 +99,20 @@
       const box = document.getElementById('chat-box');
       const line = document.createElement('div');
       
-      // 모든 http/https URL 추출 정규식
       const urlRegex = /(https?:\/\/[^\s]+)/gi;
 
-      // 1. HTML 이스케이프 (특수문자 보안)
       let safeContent = contentText
         .replace(/&/g, "&amp;")
         .replace(/</g, "&lt;")
         .replace(/>/g, "&gt;");
 
-      // 2. URL 파싱
       safeContent = safeContent.replace(urlRegex, (url) => {
-        // 이미지 확장자, 네이버, 구글 썸네일(gstatic) 등 이미지 주소 판별
         const isImage = /\.(?:jpg|jpeg|png|gif|webp)(\?.*)?$/i.test(url) || 
                         url.includes('mblogthumb') || 
                         url.includes('gstatic.com') ||
                         url.includes('googleusercontent.com');
         
         if (isImage) {
-          // onerror 처리로 이미지 안 불러와지면 엑박 대신 텍스트로 표시
           return `<br><img src="${url}" referrerpolicy="no-referrer" onerror="this.outerHTML='[이미지 로드 실패]';" style="max-width: 250px; max-height: 250px; border: 1px solid black; margin: 3px 0;" /><br>`;
         }
         return `<a href="${url}" target="_blank">${url}</a>`;
